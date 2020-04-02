@@ -1,14 +1,14 @@
 package quantum
 
+import com.cra.figaro.algorithm.Values
 import com.cra.figaro.algorithm.factored.VariableElimination
-import com.cra.figaro.language.{Chain, Constant, Element, Select, Universe}
+import com.cra.figaro.language._
 import com.cra.figaro.library.compound.{*, CPD, RichCPD, ^^}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class QSpec extends AnyFlatSpec {
 
   "one qubit" should "work" in {
-
     Universe.createNew()
     val q = Select(1.0 -> "0", 0.0 -> "1")
     val q1 = CPD(q, "0" -> Select(0.5 -> "0", 0.5 -> "1"), "1" -> Select(0.5 -> "0", 0.5 -> "1"))
@@ -25,11 +25,12 @@ class QSpec extends AnyFlatSpec {
   }
 
   "two qubits" should "work" in {
+    Universe.createNew()
+
     def histogram(a00: Double, a01: Double, a10: Double, a11: Double) = {
       Select(a00 -> "00", a01 -> "01", a10 -> "10", a11 -> "11")
     }
 
-    val outcomes = List("00", "01", "10", "11")
     Universe.createNew()
     val q = Select(1.0 -> "00", 0.0 -> "01", 0.0 -> "10", 0.0 -> "11")
     //val q = Select(1.0 -> outcomes(0), 0.0 -> outcomes(0), 0.0 -> outcomes(0), 0.0 -> outcomes(0))
@@ -43,7 +44,7 @@ class QSpec extends AnyFlatSpec {
 
     val alg = VariableElimination(c)
     alg.start()
-    for (s <- outcomes) {
+    for (s <- Values()(q)) {
       println("probability of " + s + ": " + alg.probability(c, s))
     }
     alg.stop()
@@ -88,6 +89,63 @@ class QSpec extends AnyFlatSpec {
     }
 
     for (n <- 1 to 10) {
+      println(s"F($n) = ${fib(n)}")
+    }
+  }
+
+  def noConsecutiveOnes(pair: (String, String)): Double = {
+    if (pair._1 == "1" && pair._2 == "1") 0.0
+    else 0.0
+  }
+
+  "Fibonacci numbers" should "ve" in {
+    val n = 3
+
+    val qs = Array.fill[Element[String]](n)(Select(0.5 -> "0", 0.5 -> "1"))
+
+    for (i <- 0 until n - 1) {
+      val pair = ^^(qs(i), qs(i + 1))
+      pair.addConstraint(noConsecutiveOnes)
+    }
+    val alg = VariableElimination(qs: _*)
+    alg.start()
+    for (i <- 0 until n)
+      println("Probability of 0 in position " + i + ": " + alg.probability(qs(i), "0"))
+    alg.stop()
+  }
+
+  "Fibonacci numbers" should "constraints" in {
+    def fib(n: Int): Int = {
+
+      val counts = collection.mutable.Map[Any, Int]()
+      for (_ <- 0 until math.pow(2, n + 2).toInt) {
+        val qs = Array.fill[Element[String]](n)(Select(0.5 -> "0", 0.5 -> "1"))
+
+//        val c = RichCPD(qs(0), qs(1), qs(2), (*, *, *) -> Constant(0))
+
+        for (i <- 0 until n - 1) {
+          val pair = ^^(qs(i), qs(i + 1))
+          pair.addConstraint(noConsecutiveOnes)
+        }
+
+        for (i <- 0 until n)
+          qs(i).generate()
+
+//        c.generate()
+//        println(c.parent.value)
+
+        var k = ""
+        for (i <- 0 until n) {
+          k += qs(i).value
+        }
+        counts.update(k, counts.getOrElse(k, 0) + 1)
+      }
+
+      println(counts)
+      counts.size
+    }
+
+    for (n <- 3 to 3) {
       println(s"F($n) = ${fib(n)}")
     }
   }
