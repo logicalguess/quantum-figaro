@@ -92,46 +92,4 @@ class QSpec extends AnyFlatSpec {
     }
   }
 
-  "Fibonacci numbers" should "constraints" in {
-    def fib(n: Int): Int = {
-      Universe.createNew()
-
-      val qs = Array.fill[Element[String]](n)(Select(0.5 -> "0", 0.5 -> "1"))
-
-//      for (i <- 0 until qs.length - 1) {
-//        val pair = ^^(qs(i), qs(i + 1))
-//        pair.setConstraint(p => {if (p._1 == "1" && p._2 == "1") 0.0 else 1.0})
-//      }
-
-      def noConsecutiveOnes(pair: (String, String)): Double = {
-        println(pair)
-        if (pair._1 == "1" && pair._2 == "1") 0.0
-        else 1.0
-      }
-
-      if (n > 1) {
-        val pair = ^^(qs(0), qs(1))
-        pair.setConstraint(noConsecutiveOnes _)
-        val alg = VariableElimination(qs(1))
-        alg.start()
-      }
-
-
-      val counts = collection.mutable.Map[Any, Int]()
-      for (_ <- 0 until math.pow(2, n + 2).toInt) {
-        for (i <- 0 until qs.length)
-          qs(i).generate()
-
-        val k = qs.map(_.value).mkString("")
-        counts.update(k, counts.getOrElse(k, 0) + 1)
-      }
-      println(counts)
-      counts.size
-    }
-
-    for (n <- 1 to 2) {
-      println(s"F($n) = ${fib(n)}")
-    }
-  }
-
 }
