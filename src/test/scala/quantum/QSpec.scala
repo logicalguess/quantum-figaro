@@ -160,12 +160,10 @@ class QSpec extends AnyFlatSpec {
       alg.start()
 //      alg.distribution(c).print("\n")
 //      println()
-      alg.distribution(c).filter((p => p._1 > 0)).size
 //      val p = alg.probability(c, (s: String) => s.contains(("11")))
-      alg.stop()
       alg.distribution(c).filter((p => p._1 > 0)).size
+      //alg.stop()
     }
-
 
     for (n <- 1 to 5) {
       println(s"F($n) -> ${fib(n)}")
