@@ -2,8 +2,9 @@ package quantum
 
 import com.cra.figaro.algorithm.Values
 import com.cra.figaro.algorithm.factored.VariableElimination
+import com.cra.figaro.algorithm.sampling.Importance
 import com.cra.figaro.language._
-import com.cra.figaro.library.compound.{*, CPD, RichCPD, ^^}
+import com.cra.figaro.library.compound.{CPD, ^^}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class QSpec extends AnyFlatSpec {
@@ -95,7 +96,7 @@ class QSpec extends AnyFlatSpec {
 
   def noConsecutiveOnes(pair: (String, String)): Double = {
     if (pair._1 == "1" && pair._2 == "1") 0.0
-    else 0.0
+    else 1.0
   }
 
   "Fibonacci numbers" should "ve" in {
@@ -121,7 +122,7 @@ class QSpec extends AnyFlatSpec {
       for (_ <- 0 until math.pow(2, n + 2).toInt) {
         val qs = Array.fill[Element[String]](n)(Select(0.5 -> "0", 0.5 -> "1"))
 
-//        val c = RichCPD(qs(0), qs(1), qs(2), (*, *, *) -> Constant(0))
+        //        val c = RichCPD(qs(0), qs(1), qs(2), (*, *, *) -> Constant(0))
 
         for (i <- 0 until n - 1) {
           val pair = ^^(qs(i), qs(i + 1))
@@ -131,8 +132,8 @@ class QSpec extends AnyFlatSpec {
         for (i <- 0 until n)
           qs(i).generate()
 
-//        c.generate()
-//        println(c.parent.value)
+        //        c.generate()
+        //        println(c.parent.value)
 
         var k = ""
         for (i <- 0 until n) {
@@ -150,4 +151,57 @@ class QSpec extends AnyFlatSpec {
     }
   }
 
+
+  "Fibonacci numbers" should "sampling" in {
+    def fib(n: Int): Int = {
+      val c = nco(n)
+
+      val alg = Importance(math.pow(2, n + 5).toInt, c)
+      alg.start()
+//      alg.distribution(c).print("\n")
+//      println()
+      alg.distribution(c).filter((p => p._1 > 0)).size
+//      val p = alg.probability(c, (s: String) => s.contains(("11")))
+      alg.stop()
+      alg.distribution(c).filter((p => p._1 > 0)).size
+    }
+
+
+    for (n <- 1 to 5) {
+      println(s"F($n) -> ${fib(n)}")
+    }
+  }
+
+  "Fibonacci numbers" should "generate" in {
+    def fib(n: Int): Int = {
+      val counts = collection.mutable.Map[Any, Int]()
+      for (_ <- 0 until math.pow(2, n + 2).toInt) {
+        val c = nco(n)
+        val alg = Importance(1, c)
+        alg.start()
+        val k = c.value
+        print(alg.distribution(c))
+        alg.stop()
+        counts.update(k, counts.getOrElse(k, 0) + 1)
+      }
+      //println(counts)
+      counts.size
+    }
+
+    for (n <- 1 to 10) {
+      println(s"F($n) = ${fib(n)}")
+    }
+  }
+
+
+  private def nco(n: Int) = {
+    val qs = Array.fill[Element[String]](n)(Select(0.5 -> "0", 0.5 -> "1"))
+
+    for (i <- 0 until n - 1) {
+      val pair = ^^(qs(i), qs(i + 1))
+      pair.addConstraint(noConsecutiveOnes)
+    }
+
+    Apply(Inject(qs: _*), (v: List[String]) => v.mkString(""))
+  }
 }
