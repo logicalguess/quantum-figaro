@@ -20,12 +20,14 @@ class QSpec extends AnyFlatSpec {
 
     val alg = VariableElimination(c)
     alg.start()
+    alg.distribution(c).print("\n")
+    println()
     println("probability of 0: " + alg.probability(c, "0"))
     println("probability of 1: " + alg.probability(c, "1"))
     alg.stop()
   }
 
-  "two qubits" should "work" in {
+  "two qubits" should "" in {
     Universe.createNew()
 
     def histogram(a00: Double, a01: Double, a10: Double, a11: Double) = {
@@ -50,6 +52,31 @@ class QSpec extends AnyFlatSpec {
     }
     alg.stop()
   }
+
+  "three qubits" should "" in {
+    val u = Universe.createNew()
+    Select(1.0 -> "0", 0.0 -> "1")("q", u)
+    val q1 = u.get[String]("q")
+    q1.generate()
+    println(u.get[String]("q").value)
+
+//    val q = Select(1.0 -> "00", 0.0 -> "01", 0.0 -> "10", 0.0 -> "11")
+//
+//    val c = Chain(q, (s: String) => s match {
+//      case "00" => histogram(0.2, 0.3, 0.4, 0.1)
+//      case "01" => histogram(0.1, 0.4, 0.3, 0.2)
+//      case "10" => histogram(0.2, 0.3, 0.3, 0.2)
+//      case "11" => histogram(0.2, 0.3, 0.3, 0.2)
+//    })
+//
+//    val alg = VariableElimination(c)
+//    alg.start()
+//    for (s <- Values()(q)) {
+//      println("probability of " + s + ": " + alg.probability(c, s))
+//    }
+//    alg.stop()
+  }
+
 
   "Fibonacci numbers" should "sample" in {
     Universe.createNew()
@@ -94,6 +121,38 @@ class QSpec extends AnyFlatSpec {
     }
   }
 
+  "Fibonacci numbers" should "chain2" in {
+    def fibSystem(n: Int) = {
+      val qs = new Array[Element[String]](n)
+      qs(0) = Select(0.5 -> "0", 0.5 -> "1")
+
+      for (i <- 1 until qs.length) {
+        qs(i) = Chain(qs(i - 1), (s: String) =>
+          if (s == "0") Select(0.5 -> "0", 0.5 -> "1")
+          else Constant("0")
+        )
+      }
+
+      Apply(Inject(qs: _*), (v: List[String]) => v.mkString(""))
+    }
+
+    def fib(n: Int): Int = {
+
+      val counts = collection.mutable.Map[Any, Int]()
+      for (_ <- 0 until math.pow(2, n + 2).toInt) {
+        val c = fibSystem(n)
+        val k = c.generateValue()
+        counts.update(k, counts.getOrElse(k, 0) + 1)
+      }
+      //println(counts)
+      counts.size
+    }
+
+    for (n <- 1 to 10) {
+      println(s"F($n) = ${fib(n)}")
+    }
+  }
+
   def noConsecutiveOnes(pair: (String, String)): Double = {
     if (pair._1 == "1" && pair._2 == "1") 0.0
     else 1.0
@@ -108,11 +167,20 @@ class QSpec extends AnyFlatSpec {
       val pair = ^^(qs(i), qs(i + 1))
       pair.addConstraint(noConsecutiveOnes)
     }
+
     val alg = VariableElimination(qs: _*)
     alg.start()
     for (i <- 0 until n)
       println("Probability of 0 in position " + i + ": " + alg.probability(qs(i), "0"))
     alg.stop()
+
+    val c = Apply(Inject(qs: _*), (v: List[String]) => v.mkString(""))
+
+    val alg1 = VariableElimination(c)
+    alg1.start()
+    alg1.distribution(c).print("\n")
+    println()
+    alg1.stop()
   }
 
   "Fibonacci numbers" should "constraints" in {
@@ -177,8 +245,8 @@ class QSpec extends AnyFlatSpec {
         val c = nco(n)
         val alg = Importance(1, c)
         alg.start()
-        val k = c.value
-        print(alg.distribution(c))
+        val k = c.generateValue()
+        //print(alg.distribution(c))
         alg.stop()
         counts.update(k, counts.getOrElse(k, 0) + 1)
       }
