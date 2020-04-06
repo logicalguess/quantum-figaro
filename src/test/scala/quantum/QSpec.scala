@@ -11,72 +11,55 @@ class QSpec extends AnyFlatSpec {
 
   "one qubit" should "work" in {
     Universe.createNew()
-    val q = Select(1.0 -> "0", 0.0 -> "1")
-    val q1 = CPD(q, "0" -> Select(0.5 -> "0", 0.5 -> "1"), "1" -> Select(0.5 -> "0", 0.5 -> "1"))
-    val c = Chain(q1, (w: String) => w match {
+    val bit = Select(1.0 -> "0", 0.0 -> "1")
+//    val q1 = CPD(q, "0" -> Select(0.5 -> "0", 0.5 -> "1"), "1" -> Select(0.5 -> "0", 0.5 -> "1"))
+    val circuit = Chain(bit, (w: String) => w match {
       case "0" => Select(0.2 -> "0", 0.8 -> "1")
       case "1" => Select(0.3 -> "0", 0.7 -> "1")
     })
 
-    val alg = VariableElimination(c)
+    val counts = collection.mutable.Map[String, Int]()
+    for (_ <- 0 until 10000) {
+      circuit.generate()
+      val k = circuit.value
+      counts.update(k, counts.getOrElse(k, 0) + 1)
+    }
+    println(counts)
+
+    val alg = VariableElimination(circuit)
     alg.start()
-    alg.distribution(c).print("\n")
+    println("The probability distribution is:")
+    alg.distribution(circuit).print("\n")
     println()
-    println("probability of 0: " + alg.probability(c, "0"))
-    println("probability of 1: " + alg.probability(c, "1"))
+    println("probability of 0: " + alg.probability(circuit, "0"))
+    println("probability of 1: " + alg.probability(circuit, "1"))
     alg.stop()
   }
 
   "two qubits" should "" in {
     Universe.createNew()
 
-    def histogram(a00: Double, a01: Double, a10: Double, a11: Double) = {
-      Select(a00 -> "00", a01 -> "01", a10 -> "10", a11 -> "11")
-    }
+//    def histogram(a00: Double, a01: Double, a10: Double, a11: Double) = {
+//      Select(a00 -> "00", a01 -> "01", a10 -> "10", a11 -> "11")
+//    }
 
-    Universe.createNew()
-    val q = Select(1.0 -> "00", 0.0 -> "01", 0.0 -> "10", 0.0 -> "11")
+    val init = Select(1.0 -> "00", 0.0 -> "01", 0.0 -> "10", 0.0 -> "11")
     //val q = Select(1.0 -> outcomes(0), 0.0 -> outcomes(0), 0.0 -> outcomes(0), 0.0 -> outcomes(0))
 
-    val c = Chain(q, (s: String) => s match {
-      case "00" => histogram(0.2, 0.3, 0.4, 0.1)
-      case "01" => histogram(0.1, 0.4, 0.3, 0.2)
-      case "10" => histogram(0.2, 0.3, 0.3, 0.2)
-      case "11" => histogram(0.2, 0.3, 0.3, 0.2)
+    val circuit = Chain(init, (s: String) => s match {
+      case "00" => Select(0.2 -> "00", 0.3 -> "01", 0.4 -> "10", 0.1 -> "11")
+      case "01" => Select(0.1 -> "00", 0.4 -> "01", 0.3 -> "10", 0.2 -> "11")
+      case "10" => Select(0.2 -> "00", 0.3 -> "01", 0.3 -> "10", 0.2 -> "11")
+      case "11" => Select(0.4 -> "00", 0.3 -> "01", 0.1 -> "10", 0.2 -> "11")
     })
 
-    val alg = VariableElimination(c)
+    val alg = VariableElimination(circuit)
     alg.start()
-    for (s <- Values()(q)) {
-      println("probability of " + s + ": " + alg.probability(c, s))
+    for (s <- Values()(init)) {
+      println("probability of " + s + ": " + alg.probability(circuit, s))
     }
     alg.stop()
   }
-
-  "three qubits" should "" in {
-    val u = Universe.createNew()
-    Select(1.0 -> "0", 0.0 -> "1")("q", u)
-    val q1 = u.get[String]("q")
-    q1.generate()
-    println(u.get[String]("q").value)
-
-//    val q = Select(1.0 -> "00", 0.0 -> "01", 0.0 -> "10", 0.0 -> "11")
-//
-//    val c = Chain(q, (s: String) => s match {
-//      case "00" => histogram(0.2, 0.3, 0.4, 0.1)
-//      case "01" => histogram(0.1, 0.4, 0.3, 0.2)
-//      case "10" => histogram(0.2, 0.3, 0.3, 0.2)
-//      case "11" => histogram(0.2, 0.3, 0.3, 0.2)
-//    })
-//
-//    val alg = VariableElimination(c)
-//    alg.start()
-//    for (s <- Values()(q)) {
-//      println("probability of " + s + ": " + alg.probability(c, s))
-//    }
-//    alg.stop()
-  }
-
 
   "Fibonacci numbers" should "sample" in {
     Universe.createNew()
@@ -165,7 +148,9 @@ class QSpec extends AnyFlatSpec {
 
     for (i <- 0 until n - 1) {
       val pair = ^^(qs(i), qs(i + 1))
-      pair.addConstraint(noConsecutiveOnes)
+//      pair.addConstraint(noConsecutiveOnes)
+      pair.addCondition(p => p._1 == "0" || p._2 == "0")
+
     }
 
     val alg = VariableElimination(qs: _*)
@@ -195,6 +180,7 @@ class QSpec extends AnyFlatSpec {
         for (i <- 0 until n - 1) {
           val pair = ^^(qs(i), qs(i + 1))
           pair.addConstraint(noConsecutiveOnes)
+//          pair.addCondition(p => p._1 == "0" || p._2 == "0")
         }
 
         for (i <- 0 until n)
@@ -265,7 +251,9 @@ class QSpec extends AnyFlatSpec {
 
     for (i <- 0 until n - 1) {
       val pair = ^^(qs(i), qs(i + 1))
-      pair.addConstraint(noConsecutiveOnes)
+//      pair.addConstraint(noConsecutiveOnes)
+      pair.addCondition(p => p._1 == "0" || p._2 == "0")
+
     }
 
     Apply(Inject(qs: _*), (v: List[String]) => v.mkString(""))
